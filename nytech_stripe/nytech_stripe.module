@@ -1,0 +1,2780 @@
+<?php
+
+//require 'twilio/Twilio.php';
+require_once('stripe/init.php');
+
+// TEST
+define('LIVESK', 'sk_live_XYZ');
+define('LIVEPK', 'pk_live_ABC');
+
+// LIVE
+define('TESTSK', 'sk_test_XYZ');
+define('TESTPK', 'pk_test_ABC');
+
+
+function nytech_stripe_menu() {
+	
+	
+	$items['api/v1/set_api_key'] = array(
+		'page callback' => 'set_api_key', 
+		'access callback' => TRUE, 
+	);
+	
+	$items['subscriptions'] = array(
+		'title' => 'Subscription',
+		'page callback' => 'screen_subscriptions', 
+		'access callback' => 'user_is_logged_in', 
+	);
+	$items['api/v1/subscribe_user/%'] = array(
+		'title' => 'Subscribe',
+		'page callback' => 'api_subscribe_user',
+		'access callback' => 'user_is_logged_in',
+		'page arguments' => array(3),
+	);
+	$items['api/v1/card/create'] = array(
+		'title' => 'Add A Card',
+		'page callback' => 'api_create_a_card', 
+		'access callback' => 'user_is_logged_in',
+	);
+	$items['api/v1/card/delete'] = array(
+		'title' => 'Delete A Card',
+		'page callback' => 'api_delete_a_card', 
+		'access callback' => 'user_is_logged_in',
+	);
+	$items['api/v1/subscribe_user/%/free'] = array(
+		'title' => 'Subscribe',
+		'page callback' => 'api_subscribe_user_free', 
+		'access callback' => 'user_is_logged_in',
+		'page arguments' => array(3),
+	);
+	$items['api/v1/subscribe_sub_user/%/%'] = array(
+		'title' => 'Subscribe',
+		'page callback' => 'api_subscribe_sub_user', 
+		'access callback' => 'user_is_logged_in',
+		'page arguments' => array(3,4),
+	);
+	$items['charges'] = array(
+		'title' => 'Charges',
+		'page callback' => 'api_my_charge', 
+	    'access callback' => 'user_is_logged_in',
+	);
+	$items['charges/%'] = array(
+		'title' => 'Charges',
+		'page callback' => 'api_my_charge_search', 
+	    'access callback' => 'is_staff',
+	    'page arguments' => array(1),
+	);
+	
+	$items['register'] = array(
+		'title' => 'Registration',
+	    'page callback' => 'screen_registration',
+	    'access callback' => TRUE,
+	);
+	
+	$items['register/confirm'] = array(
+		'title' => 'Confirm Account',
+	    'page callback' => 'screen_confirm_account',
+	    'access callback' => TRUE,
+	);
+	
+	$items['api/v1/verification/account'] = array(
+		'title' => 'Confirm Account',
+	    'page callback' => 'screen_verification_account',
+        'delivery callback' => 'drupal_json_output',
+	    'access callback' => TRUE,
+	);
+	
+	$items['api/v1/verification/register'] = array(
+		'title' => 'Confirm Account',
+	    'page callback' => 'screen_verification_register',
+        'delivery callback' => 'drupal_json_output',
+	    'access callback' => TRUE,
+	);
+	
+	$items['providers/search'] = array(
+		'title' => 'Find Provider',
+	    'page callback' => 'screen_provider_search',
+	    'access callback' => TRUE,
+	);
+	$items['providers/%/providers'] = array(
+		'title' => 'Select Provider',
+	    'page callback' => 'screen_provider_providers',
+	    'access callback' => TRUE,
+	    'page arguments' => array(1),
+	);
+	
+	$items['providers/%/plans'] = array(
+		'title' => 'Select Plan',
+	    'page callback' => 'screen_provider_plans',
+	    'access callback' => TRUE,
+	    'page arguments' => array(1),
+	);
+	
+	$items['providers/%/plans/next'] = array(
+		'title' => 'Select Plan Next',
+	    'page callback' => 'screen_provider_plans_next',
+	    'access callback' => TRUE,
+	    'page arguments' => array(1),
+	);
+	
+	$items['providers/%/register'] = array(
+		'title' => 'Account',
+	    'page callback' => 'screen_provider_register',
+	    'access callback' => TRUE,
+	    'page arguments' => array(1),
+	);
+	
+	$items['providers/%/payment'] = array(
+		'title' => 'Payment Method',
+	    'page callback' => 'screen_provider_payment',
+	    'access callback' => TRUE,
+	    'page arguments' => array(1),
+	);
+	
+	$items['user/subscriptions/%'] = array(
+		'title' => 'Subscriptions',
+		'page callback' => 'screen_user_subscriptions_single',
+		'access callback' => TRUE,
+		'page arguments' => array(2),
+	);
+	
+	$items['user/subscriptions/add/%'] = array(
+		'title' => 'Subscriptions',
+		'page callback' => 'screen_user_subscriptions_add',
+		'access callback' => 'user_is_logged_in',
+		'page arguments' => array(3),
+	);
+	
+	$items['api/v1/charges'] = array(
+		'title' => 'Charges',
+		'page callback' => 'api_charges',
+		'access callback' => TRUE,
+        'delivery callback' => 'drupal_json_output',
+	);
+	
+	return $items;
+}
+
+function set_api_key() {
+	$stripeKey = new StripeKey;
+	require_once('stripe/init.php');
+	$output = \Stripe\Stripe::setApiKey($stripeKey->sk);
+	return $output;
+}
+
+function screen_subscriptions() {
+	$stripeKey = new StripeKey;
+	global $user;
+	$user = user_load($user->uid);
+	if(!empty($user->stripe_subs)) {
+		
+	}
+	require_once('stripe/init.php');
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+	\Stripe\Stripe::setApiKey($stripe_sub_id);
+	\Stripe\Subscription::retrieve("sub_Bzb8rB7Fa8C407");
+	return $output;
+}
+
+function stripe_form($plan = NULL, $pp = NULL, $org_id) {
+	if(!empty($plan)) {
+		if(!is_null($pp)) {
+		$forInput = '
+			<div class="row">
+				<div class="col-sm-4">
+					<input class="form-control" name="pp" placeholder="pp" type="text" size="6" value="' . $pp . '" style="display:none; visibility:hidden;">
+				</div>
+			</div>
+		';
+	} else {
+		$forInput = '';
+	}
+
+	$orgInput = '
+		<div class="row">
+			<div class="col-sm-4">
+				<input class="form-control" name="org_id" placeholder="Organization ID" type="text" size="6" value="' . $org_id . '" style="display:none; visibility:hidden;">
+			</div>
+		</div>
+	';
+	
+	
+    global $user;
+    $destination = 'downloads/apps';
+    
+	    $output = '
+			<div class="col-8 offset-md-2">
+				<div class="card">
+					<h3 class="text-center">Add A Card</h3>
+					<form action="' . base_path() . 'api/v1/subscribe_user/' . $plan . '" method="POST"  id="payment-form">
+						<div class="row">
+							<div class="col">
+								<span id="paymentErrors" class="payment-errors"></span>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-sm-12">
+					    		<input class="form-control" placeholder="Card Number" type="text" size="20" data-stripe="number">
+							</div>
+						</div>
+						<br />
+						<div class="row">
+							<div class="col-sm-4">
+						      <input class="form-control" placeholder="MM" type="text" size="2" data-stripe="exp_month">
+							</div>
+							<div class="col-sm-8">
+					    		<input class="form-control" placeholder="YYYY" type="text" size="2" data-stripe="exp_year">
+					    	</div>
+						</div>
+						<br />
+						<div class="row">
+							<div class="col-sm-4">
+								<input class="form-control" placeholder="CVC" type="text" size="4" data-stripe="cvc">
+							</div>
+						</div>
+						<br />
+						<div class="row">
+							<div class="col-sm-4">
+								<input class="form-control" placeholder="Billing Zip" type="text" size="6" data-stripe="address_zip">
+							</div>
+						</div>
+						' . $forInput . '
+						' . $orgInput . '
+						<br />
+					 	<input type="submit" class="submit btn btn-small btn-success" value="Submit Payment">
+					</form>
+				</div>
+			</div>
+	    ';
+	} else {
+		$output = ' 
+			<div class="card">
+			<h3>You must select a plan</h3>
+			<br />
+			<span class="text-center">Please select a plan before you add a payment card.</span><br /><br />
+			' . l('Select a Plan', 'providers/' . $org_id . '/plans', array(
+				'attributes' => array(
+					'class' => array(
+						'btn', 
+						'btn-info',
+						'btn-lg',
+					),
+				)	
+			)) . '
+			</div>
+		';
+	}
+    return $output;
+}
+
+function api_card_and_customer_create($user) {
+	if(!empty($_POST['stripeToken'])) {
+		$token = $_POST['stripeToken'];
+	}
+	if($token) {
+		$stripeKey = new StripeKey;
+		require_once('stripe/init.php');
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		try {
+		    // Use a Stripe PHP library method that may throw an exception....
+			$customer = \Stripe\Customer::create(array(
+				"description" => "Customer for " . $user->mail,
+				"source" => $token, // obtained with Stripe.js
+				"email" => $user->mail,
+		 	));
+		} catch (\Stripe\Error\Base $e) {
+		  // Code to do something with the $e exception object when an error occurs
+		  echo($e->getMessage());
+		} catch (Exception $e) {
+		  // Catch any other non-Stripe exceptions
+		}
+		if(!empty($e)) {
+			$customer = NULL;
+		} else {
+			$e = array();
+			
+			// Set vars
+			$stripe_customer_id = $customer->id;
+			$stripe_card_id = $customer->default_source;
+			
+			// Build save array
+			$edit['stripe_customer_id']['und'][0]['value'] = $stripe_customer_id;
+			$edit['stripe_default_card_id']['und'][0]['value'] = $stripe_card_id;
+			
+			$user = user_save($user, $edit);
+			
+		}
+	} else {
+		$customer = FALSE;
+	}
+	
+	$output = array(
+		'customer' => $customer,
+		'user' => $user,
+		'errors' => $e,
+	);
+	return $output;
+}
+
+/*
+ * This only works when the customer already has a cust id
+ */
+function generate_a_new_payment_card($user) {
+	if(!empty($_POST['stripeToken'])) {
+		$token = $_POST['stripeToken'];
+	}
+	if($token) {
+		$stripeKey = new StripeKey;
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		try {
+			$stripe_customer_id = $user->stripe_customer_id['und'][0]['value'];
+			$stripeKey = new StripeKey;	
+			$customer = \Stripe\Customer::retrieve($stripe_customer_id);
+			$card = $customer->sources->create(array(
+				"source" => $token
+			));
+			$customer->default_source = $card->id;
+			$customer->save();
+			$edit['stripe_default_card_id']['und'][0]['value'] = $card->id;
+			user_save($user, $edit);
+		} catch (\Stripe\Error\Base $e) {
+		  // Code to do something with the $e exception object when an error occurs
+		  echo($e->getMessage());
+		} catch (Exception $e) {
+		  // Catch any other non-Stripe exceptions
+		}
+		if(!empty($e)) {
+			$customer = NULL;
+		} else {
+			$e = array();
+		}
+		
+	} else {
+		$customer = FALSE;
+	}
+	
+	$output = array(
+		'data' => $customer,
+		'errors' => $e,
+	);
+	return $output;
+}
+
+
+
+function delete_all_cards_but_default_source($user) {
+		
+	$stripe_customer_id = $user->stripe_customer_id['und'][0]['value'];
+
+	$stripeKey = new StripeKey;	
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+	
+	$customer = \Stripe\Customer::retrieve($stripe_customer_id);
+	$default_source_id = $customer->default_source;
+	
+	foreach ($customer->sources['data'] as $key => $card) {
+		if($card->id != $customer->default_source) {
+			DefaultCard::delete($stripe_customer_id, $card->id);
+		}
+	}
+}
+
+
+function api_subscribe_user_to_products($user, $stripe_plans) {
+		
+	$cus_id = $user->stripe_customer_id['und'][0]['value'];
+	
+	if($cus_id) {
+		
+		require_once('stripe/init.php');
+	
+		$stripeKey = new StripeKey;
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+	
+		$subscription = \Stripe\Subscription::create(array(
+		  "customer" => $cus_id,
+		  "items" => $stripe_plans,
+		));
+				
+	} else {
+		$subscription =  FLASE;
+	}
+
+	return $subscription;
+	
+}
+
+function api_set_primary_provider($user, $pcp_id) {
+	
+	if(!empty($pcp_id)) {
+		$edit['primary_provider_id']['und'][0]['value'] = $pcp_id;
+		$user = user_save($user, $edit);
+		$bool = TRUE;
+	} else {
+		$bool = FALSE;
+	}
+	
+	return $bool;
+}
+
+function check_already_has_sub($org_node, $user) {
+	
+	$data = array();
+	
+	$args = array(
+		':user_id' => $user->uid,
+		':org_id' => $org_node->nid,
+	);
+	$query = db_query('
+		SELECT * 
+		FROM {subscription} s 
+		WHERE s.user_id = :user_id
+		AND s.org_id = :org_id', 
+		$args
+	);
+	$result = $query->fetchAll();
+	foreach ($result as $record) {
+		$data[] = $record;
+	}
+	
+	return $data;
+}
+
+function api_subscribe_user($plan_id) {
+	
+	global $user;
+	$user = user_load($user->uid);
+	$user_id = $user->uid;
+	
+	$org_node = node_load($_GET['org_id']);
+	$has_sub = check_already_has_sub($org_node, $user);
+
+	if(!empty($has_sub)) {
+		$message = 'You were not charge because you already have this subscription.';
+		$destination = $_GET['destination'];
+		drupal_set_message($message);
+		drupal_goto($destination);
+	}
+
+	if(empty($user->stripe_customer_id) && empty($user->stripe_default_card_id)) {
+		$card_responce = api_card_and_customer_create($user);
+	} elseif(!empty($user->stripe_customer_id) && empty($user->stripe_default_card_id)) {
+		generate_a_new_payment_card($user);
+		$customer_id = $user->stripe_customer_id['und'][0]['value'];
+		$stripeKey = new StripeKey;
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		
+		$customer = \Stripe\Customer::retrieve($customer_id);
+		$card_responce = array(
+			'customer' => $customer,
+			'user' => $user,
+		);
+		delete_all_cards_but_default_source($user);
+	} elseif(!empty($user->stripe_customer_id) && !empty($user->stripe_default_card_id)) {
+		$stripeKey = new StripeKey;
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		$customer_id = $user->stripe_customer_id['und'][0]['value'];
+		$customer = \Stripe\Customer::retrieve($customer_id);
+		$card_responce = array(
+			'customer' => $customer,
+			'user' => $user,
+		);
+		
+	} else {
+		$card_responce = api_card_and_customer_create($user); // the catch all.
+	}
+	
+	
+	if(!empty($card_responce['customer']) && !empty($card_responce['user'])) {
+		$customer = $card_responce['customer'];
+		//$user = $card_responce['user'];
+				
+		// Load the plan and get the stripe_plan_id;
+		$plan_object = node_load($plan_id);
+		$stripe_plan_ids = $plan_object->field_stripe_id['und'][0]['value'];
+		
+		
+		if($stripe_plan_ids == 'copeFamily') {
+			$stripe_plans = array(
+				array(
+					'plan' => 'copeFamily',
+				),
+				array(
+					'plan' => 'copePlusOne',
+				),
+			);
+		} elseif($stripe_plan_ids == 'copeFamily-TS') {
+			$stripe_plans = array(
+				array(
+					'plan' => 'copeFamily-TS',
+				),
+				array(
+					'plan' => 'copePlusOne-TS',
+				),
+			);
+		} else {
+			$stripe_plans = array(
+				array(
+					'plan' => $stripe_plan_ids,
+				),
+			);
+		}
+		
+		if(!empty($_GET['pp'])) {
+			if($stripe_plan_ids == 'cope12') {
+				$pp_node = node_load(26); // 26 is the "Copeland Medical" PCP that connects Support and MA to the user.
+			} else {
+				$pp_node = node_load($_GET['pp']);
+			}
+
+			if(!empty($pp_node->field_related_provider)) {
+				$pp_uid = $pp_node->field_related_provider['und'][0]['target_id'];
+			} else {
+				$pp_uid = 0;
+			}
+		}
+		
+		
+		$subscription = api_subscribe_user_to_products($user, $stripe_plans);
+	
+		$stripe_items_data = $subscription->items->data;
+		
+		$s = array(
+			'subscription' => $subscription->subscription,
+			'canceled_at' => $subscription->canceled_at,
+			'created' => $subscription->created,
+			'current_period_end' => $subscription->current_period_end,
+			'current_period_start' => $subscription->current_period_start,
+			'days_until_due' => $subscription->days_until_due,
+			'ended_at' => $subscription->ended_at,
+			'status' => $subscription->status,
+		);
+		
+
+		if($_GET['sub_user_id']) {
+			$sub_user_id = (int) $_GET['sub_user_id'];
+			if($sub_user_id > 0) {
+				SubscriptionOperations::connect($user_id, $sub_user_id);// Connect the user and the sub_user			
+			} else {
+				$sub_user_id = NULL;
+			}
+		} else {
+			$sub_user_id = NULL;
+		}
+		
+		// Gen a sub for local db
+		$sub_records = SubscriptionOperations::create(
+			$stripe_items_data,
+			$s,
+			$_GET['org_id'], 
+			$user_id, 
+			$pp_uid, 
+			$subscription->customer, 
+			$sub_user_id
+		);
+		
+		// Subscribe the user to the Doc and helpers
+		connect_to_pp_and_helpers($user->uid, $pp_node);
+		api_set_primary_provider($user, $pp_uid);
+		
+		if(!empty($_GET['sub_user_id'])) {
+			$sub_user_id = (int) $_GET['sub_user_id'];
+			
+			if($sub_user_id > 0) {
+				
+				$sub_user = user_load($sub_user_id);
+				connect_to_pp_and_helpers($sub_user->uid, $pp_node);
+				api_set_primary_provider($sub_user, $pp_uid);
+			}
+		}
+		
+		// Set the provider id here.
+		
+		// Send user to Account
+		if(!empty($_POST['destination'])) {
+			$destination = $_POST['destination'];
+		} else {
+			$destination = 'user';
+		}
+		
+		drupal_goto($destination);
+		return 'destination: ' . $destination;
+		
+	} elseif($card_responce['errors']) {
+		$errors = $card_responce['errors'];
+		$json = $errors->httpBody;
+		$errors = json_decode($json);
+
+
+		$message = $errors->error->message;
+		
+		$destination = $_POST['errors'];
+		$query = drupal_get_query_parameters();
+		$push = array('message' => $message);
+		
+		array_push($query, $push);
+		drupal_goto($destination, array('query' => $query));
+	}
+}
+
+function api_subscribe_user_free($plan_id) {
+	
+	global $user;
+	$user = user_load($user->uid);
+	$user_id = $user->uid;
+	
+	$org_node = node_load($_GET['org_id']);
+	$has_sub = check_already_has_sub($org_node, $user);
+
+	if(!empty($has_sub)) {
+		$message = 'You were not re-subscribed because you already have this subscription.';
+		$destination = $_GET['destination'];
+		drupal_set_message($message);
+		drupal_goto($destination);
+	}
+
+	if(!empty($_GET['org_id'])) {
+		$org_id = $_GET['org_id'];
+		$org = node_load($org_id);
+		$org_name = $org->title;
+	} else {
+		$org_id = 0;
+		$org_name = 'Subscription';
+	}
+	
+	$cus_id = 'Free: ' . $org_name;
+			
+	// Load the plan and get the stripe_plan_id;
+	$plan_object = node_load($plan_id);
+	$stripe_plan_ids = $plan_object->field_stripe_id['und'][0]['value'];
+	
+	if(!empty($_GET['pp'])) {
+		$pp_node = node_load($_GET['pp']);
+		if(!empty($pp_node->field_related_provider)) {
+			$pp_uid = $pp_node->field_related_provider['und'][0]['target_id'];
+		} else {
+			$pp_uid = 0;
+		}
+	}
+	
+	// Gen a sub for local db
+	$sub_records = SubscriptionOperations::create_free_single($org_id, $user_id, $pp_uid, $cus_id, $stripe_plan_ids, $plan_object->title);
+	
+	// Subscribe the user to the Doc and helpers
+	connect_to_pp_and_helpers($user->uid, $pp_node);
+	api_set_primary_provider($user, $pp_uid);
+	
+	
+	if($_GET['destination']) {
+		$destination = $_GET['destination'];
+	} else {
+		$destination = 'node/38';
+	}
+	
+	drupal_goto($destination);
+	return 'destination: ' . $destination;
+		
+	
+}
+
+function connect_to_pp_and_helpers($user_id, $pp_node) {
+	
+	$connect_to = array();
+	if(!empty($pp_node->field_also_connect)) {
+		foreach ($pp_node->field_also_connect['und'] as $key => $helper) {
+			$connect_to[] = get_user_id_and_message($helper['target_id']);
+		}
+	}
+	
+	foreach ($connect_to as $key => $connect) {
+		connect_and_message($user_id, $connect['user_id'], $connect['message']);
+	}
+}
+
+function get_user_id_and_message($pp) {
+	
+	if(is_object($pp)) {
+		// do nothing
+	} else {
+		$pp = node_load($pp);
+	}
+	
+	if(!empty($pp->field_related_provider)) {
+		$user_id = $pp->field_related_provider['und'][0]['target_id'];
+	} else {
+		$user_id = NULL;
+	}
+	
+	if(!empty($pp->field_welcome_message)) {
+		$message = $pp->field_welcome_message['und'][0]['value'];
+	} else {
+		$message = NULL;
+	}
+	
+	$output = array(
+		'user_id' => $user_id,
+		'message' => $message,
+	);
+	
+	return $output;
+}
+
+function connect_and_message($user_id, $other_user_id, $message) {
+	if(!empty($user_id) && !empty($other_user_id) && !empty($message)) {
+		$contact = SubscriptionOperations::connect($user_id, $other_user_id);
+		MessageOperations::save($contact->related_conversation, array('message_text' => $message), $contact->user_id);
+		// Delete latest inbox messages
+		$usurped_ids = InboxOperations::get_usurped_notification(array($user_id, $other_user_id), $contact->related_conversation, 'conversation');
+		$notifications_deleted = InboxOperations::delete_usurped_notifications($usurped_ids);
+		// Create two, one for the sender and one for the receiver.
+		$message_text = new StdClass;
+		$message_text->message_text = $message;
+		NotificationOperations::create('', $message_text, $user_id, $other_user_id, $contact->related_conversation, 1);
+		NotificationOperations::create('YOU: ', $message_text, $other_user_id, $user_id, $contact->related_conversation, 1);
+	}
+}
+
+function _update_user_stripe_user_and_sub_id($customer, $user) {
+	$edit = array();
+	
+	if(!empty($customer['stripe_customer_id'])) {
+		$edit['stripe_customer_id']['und'][0]['value'] = $customer['stripe_customer_id'];
+	}
+	if(!empty($customer['stripe_plan_id'])) {
+		$edit['stripe_plan_id']['und'][0]['value'] = $customer['stripe_plan_id'];
+	}
+	$otuput = user_save($user, $edit);
+		
+	return $otuput;
+}
+
+function api_consult_charge() {
+	
+	$auth = nytech_api_auth();
+	$output = array(
+		'status' => $auth['status'],
+		'uid' => $auth['uid'],
+		'message' => $auth['message'],
+	);
+	
+	$output['data']['charge'] = _charge_consult_to_user($auth['uid']);
+	return $output;
+}
+
+function _charge_consult_to_user($uid) {
+	
+	$stripeKey = new StripeKey;
+	
+	require_once('stripe/init.php');
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+	$customerId = _get_stripe_customer_id($uid);
+	if($customerId != 'not found') {
+		try {
+			$charge = \Stripe\Charge::create(array(
+				"amount"   => 4000,
+				"currency" => "usd",
+				"description" => 'Remote Office Visit',
+				"customer" => $customerId,
+			));
+			$output = $charge->id;
+		} catch(\Stripe\Error\Card $e) {
+			$output = $e;
+	    }
+	} else {
+		$output = 'Customer ID not found';
+	}
+	
+	return $output;
+}
+
+function _get_stripe_customer_id($uid) {
+	$user = user_load($uid);
+	
+	if(!empty($user->stripe_customer_id['und'])) {
+		$customerId = $user->stripe_customer_id['und'][0]['value'];
+	} else {
+		$customerId = 'not found';
+	}
+	
+	return $customerId;
+}
+
+function get_coupon_form() {
+	
+	if(!empty($_GET['subscription_id'])) {
+		$output = '
+			<div class="well bg-success text-center">
+				COUPON APPLIED
+			</div>
+		';
+	} else {
+		$output = '
+			<div class="card">
+				<input id="coupon" class="form-control" type="text" placeholder="Coupon Code" value="" />
+				<button id="coupon_apply" class="btn btn-success" >Submit Coupon</button>
+			</div>
+			<script>
+				document.getElementById("coupon_apply").onclick = function() {
+				    var coupon = document.getElementById("coupon").value;
+				    var cleanCoupon = coupon.toUpperCase()
+				    if(cleanCoupon == "COPELAND10") {
+				    	var theCode = "telecare_sub_10";
+						good_coupon(theCode);
+				    } else if(cleanCoupon == "COPE20") {
+						var theCode = "cope20";
+						good_coupon(theCode);
+				    } else {
+				    	alert("Sorry, this is not a valid coupon.");
+				    }
+					
+				}
+	
+				function good_coupon(theCode) {
+				    window.location.href = "' . base_path() . current_path() . '?subscription_id=" + theCode;
+				}
+			</script>
+		';
+	}
+	
+	return $output;
+}
+
+function api_my_charge() {
+	
+	$stripeKey = new StripeKey;
+	
+	global $user;
+	$output = 'No charges found.';
+	$user = user_load($user->uid);
+	$stripe_cust_id = FALSE;
+	if(!empty($user->stripe_customer_id['und'])) {
+		$stripe_cust_id = $user->stripe_customer_id['und'][0]['value'];
+		require_once('stripe/init.php');
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		$charges = \Stripe\Charge::all(array(
+			'limit' => 100,
+			'customer' => $stripe_cust_id,
+		));
+		
+		if(!empty($charges['data'])) {
+			$output = '';
+			foreach ($charges['data'] as $key => $value) {
+				$output .= output_charge_template($value);
+			}
+		} else {
+			$output = 'No charges found.';
+		}
+	}
+	
+	return $output;
+}
+
+function api_my_charge_search($user_eid) {
+			
+	$stripeKey = new StripeKey;
+	
+	$user = user_load($user_eid);
+	
+	$payment_form = screen_subscription();
+	
+	$full_name = $user->user_full_name['und'][0]['value'];
+	$back_to_search = l('Search', 'admin/user-search');
+	$charg_objects = '';
+	$stripe_cust_id = FALSE;
+	
+	if(!empty($user->stripe_customer_id['und'])) {
+		$stripe_cust_id = $user->stripe_customer_id['und'][0]['value'];
+		require_once('stripe/init.php');
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		$charges = \Stripe\Charge::all(array(
+			'limit' => 10000,
+			'customer' => $stripe_cust_id,
+		));
+		
+		
+		
+		if(!empty($charges['data'])) {
+			foreach ($charges['data'] as $key => $value) {
+				$charg_objects .= output_charge_template($value);
+			}
+		}
+	}
+	
+	$output = '
+		' . $back_to_search . '<br />
+		<span class="label label-primary">' . $full_name . '</span><br />' . '<br /><br />
+		<div>
+
+		  <!-- Nav tabs -->
+		  <ul class="nav nav-tabs" role="tablist">
+		    <li role="presentation" class="active"><a href="#charges" aria-controls="home" role="tab" data-toggle="tab">Charges</a></li>
+		    <li role="presentation"><a href="#new_charge" aria-controls="profile" role="tab" data-toggle="tab">New Charge</a></li>
+		  </ul>
+		
+		  <!-- Tab panes -->
+		  <div class="tab-content">
+		    <div role="tabpanel" class="tab-pane active" id="charges">
+		    	' . $charg_objects . '
+		    </div>
+		    <div role="tabpanel" class="tab-pane" id="new_charge">
+		    	' . $payment_form . '
+		    </div>
+		  </div>
+		
+		</div>
+		
+		<script>
+			jQuery(function () {
+			   var activeTab = jQuery("[href=" + location.hash + "]");
+			   activeTab && activeTab.tab("show");
+			});
+		</script>
+	
+	';
+	
+	return $output;
+}
+
+function output_charge_template($charge) {
+	
+	if(!empty($charge['amount'])) {
+		$num_convert = ($charge['amount'] * .01);
+		$amount = '$' . number_format($num_convert, '2', '.', ',');
+	}
+
+	if(!empty($charge['amount_refunded'])) {
+		$ref_num_convert = ($charge['amount_refunded'] * .01);
+		$refund = '$' . number_format($ref_num_convert, '2', '.', ',');
+	} else {
+		$refund = '';
+	}
+
+	$date = date('m/d/Y', $charge['created']);
+	$time= date('g:h:s a', $charge['created']);
+		
+	$output = '
+	
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="card">
+					<div class="row">
+						<div class="col-sm-3 text-center">
+							<br />
+							<h2>' . $amount . '</h2>
+							' . $time . ' - ' . $date . '
+						</div>
+						<div class="col-sm-9" style="border-left:1px solid #ededed;">
+							<br />
+							' . $charge['statement_descriptor'] . '<br />
+							' . get_source_info($charge['source']) . '<br />
+							<div class="text-right">' . $charge['receipt_email'] . '</div><br />
+							' . $refund . '<br />
+							' . $charge['failure_message'] . '<br />
+							' . $charge['failure_code'] . '
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	
+	';
+	
+	return $output;
+}
+
+function get_source_info($source) {
+	$last4 = $source->last4;
+	$brand = $source->brand;
+	$output = '<span class="label label-default">' . $brand . '</span><br />Last 4: ' . $last4;
+	return $output;
+}
+
+function plan_sub_products($parent_nid) {
+	$parent = node_load($parent_nid);
+	$children = array();
+	if(!empty($parent->field_sub_products)) {
+		foreach ($parent->field_sub_products['und'] as $key => $value) {
+			$child_object = node_load($value['target_id']);
+			$children[] = $child_object;
+		}
+	}
+	
+	return $children;
+	
+}
+
+function screen_registration($parent_nid) {
+	
+	//$children = plan_sub_products($parent_nid);
+	$output = reg_form();
+	
+	return $output;
+	
+}
+
+function screen_registration_next($parent_nid) {
+	$parent_node = node_load($parent_nid);
+	$output = reg_form_next($parent_node);
+	
+	return $output;
+	
+}
+
+function reg_form_next($parent_node) {
+	
+	$output = '
+	
+		<div class="card">
+			<h4>Sub User Account</h4><br />
+			<div id="email-message"></div>
+			<div class="input-group">
+				<input type="email" placeholder="Email" class="form-control" required="" id="email" />
+				<div class="input-group-append">
+					<span class="input-group-text">Email</span>
+				</div>
+			</div>		
+			<br />
+			<div class="input-group">
+				<input onKeyPress="return check(event,value)" onInput="checkLength()" type="number" placeholder="4-digit PIN" class="form-control" required="" id="lock" value="1000" />
+				<div class="input-group-append">
+					<span class="input-group-text">4-digit PIN</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input type="text" placeholder="First Name" class="form-control" required="" id="user_first_name" value="D" />
+				<div class="input-group-append">
+					<span class="input-group-text">First Name</span>
+				</div>
+			</div>	
+			<br />
+			<div class="input-group">
+				<input type="text" placeholder="Last Name" class="form-control" required="" id="user_last_name" value="N" />
+				<div class="input-group-append">
+					<span class="input-group-text">Last Name</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input type="date" placeholder="Date Of Birth" class="form-control" required="" id="dob" value="1980-05-04" />
+				<div class="input-group-append">
+					<span class="input-group-text">Date Of Birth</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input type="text" placeholder="Phone" class="form-control" required="" id="user_phone" value="(559) 335 - 3556" />
+				<div class="input-group-append">
+					<span class="input-group-text">Phone</span>
+				</div>
+			</div>
+			<br />
+			<div class="btn-group btn-group-toggle" data-toggle="buttons">
+				<label class="btn btn-primary" data-gender="1" id="gender-male" >
+					<input type="radio" />Male
+				</label>
+				<label class="btn btn-primary" data-gender="2" id="gender-female" >
+					 <input type="radio" />Female
+				</label>
+			</div>
+			<input type="number" name="gender" value="" id="gender-value" />
+			<br />
+			<div class="checkbox">
+				<label>
+					<input type="checkbox" required="" id="tos"  /> I have read and agree to the ' . l('Terms Of Service', 'tos', array(
+						'attributes' => array(
+							'target' => '_blank',
+						),
+					)) . '
+				</label>
+			</div>
+			
+			<div class="btn btn-success" id="account-create">Next&nbsp;&nbsp;<i class="fad fa-chevron-circle-right"></i></div>
+		
+		</div>
+		
+		<script>
+		
+			jQuery("#gender-male").click(function(){
+			    var gender = jQuery(this).data("gender");
+				jQuery("#gender-value").val(gender);
+			});
+			
+			jQuery("#gender-female").click(function(){
+			    var gender = jQuery(this).data("gender");
+				jQuery("#gender-value").val(gender);
+			});
+		
+		    function check(e,value){
+		    //Check Charater
+		        var unicode=e.charCode? e.charCode : e.keyCode;
+		        if (value.indexOf(".") != -1)if( unicode == 46 )return false;
+		        if (unicode!=8)if((unicode<48||unicode>57)&&unicode!=46)return false;
+		    }
+		    function checkLength(){
+			    var fieldLength = document.getElementById("lock").value.length;
+			    if(fieldLength <= 4){
+			        return true;
+			    } else {
+			        var str = document.getElementById("lock").value;
+			        str = str.substring(0, str.length - 1);
+			    	document.getElementById("lock").value = str;
+			    }
+		    }
+			
+			jQuery("#email").focusout(function() {
+				var getEmail = jQuery("#email").val();
+				
+				if(getEmail) {
+					var emailValid = validateEmail(getEmail);
+					if(emailValid) {
+						jQuery.ajax({
+					    	url: "' . base_path() . 'api/v1/verification/account",
+					    	type: "POST",
+					    	data: {
+					    		email:getEmail
+					    	},
+					    	success: function(result){
+					        	jQuery("#email-message").html(result);
+					    	}
+						});
+					} else {
+						jQuery("#email-message").html("<span class=\"badge badge-danger\">\"" + getEmail + "\" is not a valid email.</span>");
+					}
+				} else {
+					jQuery("#email-message").html("");
+				}
+			});
+			
+			function validateEmail(email) {
+			    var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+			    return re.test(email.toLowerCase());
+			}
+			
+			
+			function phoneFormat(input){
+		        // Strip all characters from the input except digits
+		        input = input.replace(/\D/g,"");
+		
+		        // Trim the remaining input to ten characters, to preserve phone number format
+		        input = input.substring(0,10);
+		
+		        // Based upon the length of the string, we add formatting as necessary
+		        var size = input.length;
+		        if(size == 0){
+		                input = input;
+		        }else if(size < 4){
+		                input = "("+input;
+		        }else if(size < 7){
+		                input = "(" + input.substring(0,3)+ ") " +input.substring(3,6);
+		        }else{
+		                input = "(" + input.substring(0,3)+ ") " + input.substring(3,6) + " - " + input.substring(6,10);
+		        }
+		        return input; 
+			}
+		
+			document.getElementById("user_phone").addEventListener("keyup",function(evt){
+		        var phoneNumber = document.getElementById("user_phone");
+		        var charCode = (evt.which) ? evt.which : evt.keyCode;
+		        phoneNumber.value = phoneFormat(phoneNumber.value);
+			});
+			
+			
+			
+			
+			jQuery(function () {
+			    jQuery("input").change(function () {
+			        jQuery("#account-create").toggle(jQuery("input").filter(function () {
+			            return this.value === "";
+			        }).length === 0)
+			    });
+			});
+			
+			
+			jQuery( "#account-create" ).click(function() {
+				var tosChecked = document.getElementById("tos").checked;
+				
+				/ * var u = new Date(DOB).valueOf(); */
+				
+				
+				var Email = jQuery("#email").val();
+				var PIN = jQuery("#lock").val();
+				var fName = jQuery("#user_first_name").val();
+				var lName = jQuery("#user_last_name").val();
+				var DOB = jQuery("#dob").val();
+				var Phone = jQuery("#user_phone").val();
+				var Gender = jQuery("#gender-value").val();
+				var Path = "' . base_path() . 'api/v1/register/sub' . '";	
+				
+				if(tosChecked) {
+					
+					jQuery("#account-create").html("<i class=\"fa fa-cog fa-spin\"></i> Procesing");
+					
+					if(Email && PIN && fName && lName && DOB && Phone, Gender) {
+						reg_user(Email, PIN, fName, lName, DOB, Phone, Gender, Path);
+					} else {
+						alert("Fields can\'t be left blank.");
+					}
+					
+				} else {
+					alert("You must agree to the Terms of Service.");					
+				}
+			});
+			
+			function reg_user(Email, PIN, fName, lName, DOB, Phone, Gender, Action) {
+	
+				var p = Phone.replace(/[^0-9]/g, "");
+				var n = fName + " " + lName;
+				
+				
+
+				jQuery.ajax({
+					url: Action,
+					type: "POST",
+					data: {
+						email:Email,
+						lock_code: PIN,
+						full_name: n,
+						dob_string: DOB,
+						phone: p,
+						notifications: 1,
+						gender: Gender
+					},
+					success: function(result){
+						var code = result["status"]["code"];
+						var message = result["status"]["message"];
+						console.log(result);
+						if(code > 299) {
+							alert(message);
+						} else {
+							var data = result["data"]["register"];
+							var access = data["id"];
+							if(access > 0) {
+								consol.log(data);
+								/* window.location(url); */
+							} else {
+								alert("Oops... something went wrong");
+								location.reload();	
+							}
+						}
+						
+					}
+				});
+			}
+			
+		</script>
+	';
+	return $output;
+}
+
+function reg_form() {
+		
+	
+	$output = '
+	
+		<div class="card">
+			<h4>Primary Account Registration</h4><br />
+			<div id="email-message"></div>
+			<div class="input-group">
+				<input type="email" placeholder="Email" class="form-control" required="" id="email" />
+				<div class="input-group-append">
+					<span class="input-group-text">Email</span>
+				</div>
+			</div>		
+			<br />
+			<div class="input-group">
+				<input type="password" placeholder="Password" class="form-control" required="" id="password" />
+				<div class="input-group-append">
+					<span class="input-group-text">Password</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input onKeyPress="return check(event,value)" onInput="checkLength()" type="number" placeholder="4-digit PIN" class="form-control" required="" id="lock" />
+				<div class="input-group-append">
+					<span class="input-group-text">4-digit PIN</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input type="text" placeholder="First Name" class="form-control" required="" id="user_first_name" />
+				<div class="input-group-append">
+					<span class="input-group-text">First Name</span>
+				</div>
+			</div>	
+			<br />
+			<div class="input-group">
+				<input type="text" placeholder="Last Name" class="form-control" required="" id="user_last_name" />
+				<div class="input-group-append">
+					<span class="input-group-text">Last Name</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input type="date" placeholder="Date Of Birth" class="form-control" required="" id="dob" />
+				<div class="input-group-append">
+					<span class="input-group-text">Date Of Birth</span>
+				</div>
+			</div>
+			<br />
+			<div class="input-group">
+				<input type="text" placeholder="Phone" class="form-control" required="" id="user_phone" />
+				<div class="input-group-append">
+					<span class="input-group-text">Phone</span>
+				</div>
+			</div>
+			<br />
+			<div class="btn-group btn-group-toggle" data-toggle="buttons">
+				<label class="btn btn-primary" data-gender="1" id="gender-male" >
+					<input type="radio" />Male
+				</label>
+				<label class="btn btn-primary" data-gender="2" id="gender-female" >
+					 <input type="radio" />Female
+				</label>
+			</div>
+			<input type="number" name="gender" value="" id="gender-value" />
+			<br />
+			
+			<div class="checkbox">
+				<label>
+					<input type="checkbox" required="" id="tos"  /> I have read and agree to the ' . l('Terms Of Service', 'tos', array(
+						'attributes' => array(
+							'target' => '_blank',
+						),
+					)) . '
+				</label>
+			</div>
+			
+			<div class="btn btn-success" id="account-create">Next&nbsp;&nbsp;<i class="fad fa-chevron-circle-right"></i></div>
+		
+		</div>
+		
+		<script>
+		
+			jQuery("#gender-male").click(function(){
+			    var gender = jQuery(this).data("gender");
+				jQuery("#gender-value").val(gender);
+			});
+			
+			jQuery("#gender-female").click(function(){
+			    var gender = jQuery(this).data("gender");
+				jQuery("#gender-value").val(gender);
+			});
+		
+		    function check(e,value){
+		    //Check Charater
+		        var unicode=e.charCode? e.charCode : e.keyCode;
+		        if (value.indexOf(".") != -1)if( unicode == 46 )return false;
+		        if (unicode!=8)if((unicode<48||unicode>57)&&unicode!=46)return false;
+		    }
+		    function checkLength(){
+			    var fieldLength = document.getElementById("lock").value.length;
+			    if(fieldLength <= 4){
+			        return true;
+			    } else {
+			        var str = document.getElementById("lock").value;
+			        str = str.substring(0, str.length - 1);
+			    	document.getElementById("lock").value = str;
+			    }
+		    }
+			
+			jQuery("#email").focusout(function() {
+				var getEmail = jQuery("#email").val();
+				
+				if(getEmail) {
+					var emailValid = validateEmail(getEmail);
+					if(emailValid) {
+						jQuery.ajax({
+					    	url: "' . base_path() . 'api/v1/verification/account",
+					    	type: "POST",
+					    	data: {
+					    		email:getEmail
+					    	},
+					    	success: function(result){
+					        	jQuery("#email-message").html(result);
+					    	}
+						});
+					} else {
+						jQuery("#email-message").html("<span class=\"badge badge-danger\">\"" + getEmail + "\" is not a valid email.</span>");
+					}
+				} else {
+					jQuery("#email-message").html("");
+				}
+			});
+			
+			function validateEmail(email) {
+			    var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+			    return re.test(email.toLowerCase());
+			}
+			
+			
+			function phoneFormat(input){
+		        // Strip all characters from the input except digits
+		        input = input.replace(/\D/g,"");
+		
+		        // Trim the remaining input to ten characters, to preserve phone number format
+		        input = input.substring(0,10);
+		
+		        // Based upon the length of the string, we add formatting as necessary
+		        var size = input.length;
+		        if(size == 0){
+		                input = input;
+		        }else if(size < 4){
+		                input = "("+input;
+		        }else if(size < 7){
+		                input = "(" + input.substring(0,3)+ ") " +input.substring(3,6);
+		        }else{
+		                input = "(" + input.substring(0,3)+ ") " + input.substring(3,6) + " - " + input.substring(6,10);
+		        }
+		        return input; 
+			}
+		
+			document.getElementById("user_phone").addEventListener("keyup",function(evt){
+		        var phoneNumber = document.getElementById("user_phone");
+		        var charCode = (evt.which) ? evt.which : evt.keyCode;
+		        phoneNumber.value = phoneFormat(phoneNumber.value);
+			});
+			
+			
+			
+			
+			jQuery(function () {
+			    jQuery("input").change(function () {
+			        jQuery("#account-create").toggle(jQuery("input").filter(function () {
+			            return this.value === "";
+			        }).length === 0)
+			    });
+			});
+			
+			
+			jQuery( "#account-create" ).click(function() {
+				var tosChecked = document.getElementById("tos").checked;
+				
+				/ * var u = new Date(DOB).valueOf(); */
+				
+				
+				var Email = jQuery("#email").val();
+				var Pass = jQuery("#password").val();
+				var PIN = jQuery("#lock").val();
+				var fName = jQuery("#user_first_name").val();
+				var lName = jQuery("#user_last_name").val();
+				var DOB = jQuery("#dob").val();
+				var Phone = jQuery("#user_phone").val();
+				var Gender = jQuery("#gender-value").val();
+				var Path = "' . base_path() . 'api/v1/register' . '";	
+				
+				if(tosChecked) {
+					
+					jQuery("#account-create").html("<i class=\"fa fa-cog fa-spin\"></i> Procesing");
+					
+					if(Email && Pass && PIN && fName && lName && DOB && Phone, Gender) {
+						reg_user(Email, Pass, PIN, fName, lName, DOB, Phone, Gender, Path);
+					} else {
+						alert("Fields can\'t be left blank.");
+					}
+					
+				} else {
+					alert("You must agree to the Terms of Service.");					
+				}
+			});
+			
+			function reg_user(Email, Pass, PIN, fName, lName, DOB, Phone, Gender, Action) {
+	
+				var p = Phone.replace(/[^0-9]/g, "");
+				var n = fName + " " + lName;
+				
+				
+
+				jQuery.ajax({
+					url: Action,
+					type: "POST",
+					data: {
+						email:Email,
+						password: Pass,
+						lock_code: PIN,
+						full_name: n,
+						dob_string: DOB,
+						phone: p,
+						notifications: 1,
+						gender: Gender
+					},
+					success: function(result){
+						var code = result["status"]["code"];
+						var message = result["status"]["message"];
+						console.log(result);
+						if(code > 299) {
+							alert(message);
+						} else {
+							var data = result["data"]["register"];
+							var access = data["access"];
+							if(access) {
+								location.reload();
+							} else {
+								alert("Oops... something went wrong");
+								location.reload();	
+							}
+						}
+						
+					}
+				});
+			}
+			
+		</script>
+	';
+	return $output;
+}
+
+function reg_form_user_pass() {
+		
+	
+	$output = '
+	
+		<div class="card">
+			<h4>Primary Account Registration</h4><br />
+			<div id="email-message"></div>
+			<div class="input-group">
+				<input type="email" placeholder="Email" class="form-control" required="" id="email" />
+				<div class="input-group-append">
+					<span class="input-group-text">Email</span>
+				</div>
+			</div>		
+			<br />
+			<div class="input-group">
+				<input type="password" placeholder="Password" class="form-control" required="" id="password" />
+				<div class="input-group-append">
+					<span class="input-group-text">Password</span>
+				</div>
+			</div>
+			<br />
+			<div class="checkbox">
+				<label>
+					<input type="checkbox" required="" id="tos"  /> I have read and agree to the ' . l('Terms Of Service', 'tos', array(
+						'attributes' => array(
+							'target' => '_blank',
+						),
+					)) . '
+				</label>
+			</div>
+			<div class="btn btn-success" id="account-create">Next&nbsp;&nbsp;<i class="fad fa-chevron-circle-right"></i></div>
+		
+		</div>
+		
+		<script>
+		
+			
+		
+		    function check(e,value){
+		    //Check Charater
+		        var unicode=e.charCode? e.charCode : e.keyCode;
+		        if (value.indexOf(".") != -1)if( unicode == 46 )return false;
+		        if (unicode!=8)if((unicode<48||unicode>57)&&unicode!=46)return false;
+		    }
+		    function checkLength(){
+			    var fieldLength = document.getElementById("lock").value.length;
+			    if(fieldLength <= 4){
+			        return true;
+			    } else {
+			        var str = document.getElementById("lock").value;
+			        str = str.substring(0, str.length - 1);
+			    	document.getElementById("lock").value = str;
+			    }
+		    }
+			
+			jQuery("#email").focusout(function() {
+				var getEmail = jQuery("#email").val();
+				
+				if(getEmail) {
+					var emailValid = validateEmail(getEmail);
+					if(emailValid) {
+						jQuery.ajax({
+					    	url: "' . base_path() . 'api/v1/verification/account",
+					    	type: "POST",
+					    	data: {
+					    		email:getEmail
+					    	},
+					    	success: function(result){
+					        	jQuery("#email-message").html(result);
+					    	}
+						});
+					} else {
+						jQuery("#email-message").html("<span class=\"badge badge-danger\">\"" + getEmail + "\" is not a valid email.</span>");
+					}
+				} else {
+					jQuery("#email-message").html("");
+				}
+			});
+			
+			function validateEmail(email) {
+			    var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+			    return re.test(email.toLowerCase());
+			}
+			
+			
+			
+			
+			
+			
+			
+			jQuery(function () {
+			    jQuery("input").change(function () {
+			        jQuery("#account-create").toggle(jQuery("input").filter(function () {
+			            return this.value === "";
+			        }).length === 0)
+			    });
+			});
+			
+			
+			jQuery( "#account-create" ).click(function() {
+				var tosChecked = document.getElementById("tos").checked;
+				
+				/ * var u = new Date(DOB).valueOf(); */
+				
+				
+				var Email = jQuery("#email").val();
+				var Pass = jQuery("#password").val();
+				var Path = "' . base_path() . 'api/v1/register' . '";	
+				
+				if(tosChecked) {
+					
+					jQuery("#account-create").html("<i class=\"fa fa-cog fa-spin\"></i> Procesing");
+					
+					if(Email && Pass && PIN && fName && lName && DOB && Phone, Gender) {
+						reg_user(Email, Pass, PIN, fName, lName, DOB, Phone, Gender, Path);
+					} else {
+						alert("Fields can\'t be left blank.");
+					}
+					
+				} else {
+					alert("You must agree to the Terms of Service.");					
+				}
+			});
+			
+			function reg_user(Email, Pass, PIN, fName, lName, DOB, Phone, Gender, Action) {
+	
+				var p = Phone.replace(/[^0-9]/g, "");
+				var n = fName + " " + lName;
+				
+				
+
+				jQuery.ajax({
+					url: Action,
+					type: "POST",
+					data: {
+						email:Email,
+						password: Pass,
+						lock_code: PIN,
+						full_name: n,
+						dob_string: DOB,
+						phone: p,
+						notifications: 1,
+						gender: Gender
+					},
+					success: function(result){
+						var code = result["status"]["code"];
+						var message = result["status"]["message"];
+						console.log(result);
+						if(code > 299) {
+							alert(message);
+						} else {
+							var data = result["data"]["register"];
+							var access = data["access"];
+							if(access) {
+								location.reload();
+							} else {
+								alert("Oops... something went wrong");
+								location.reload();	
+							}
+						}
+						
+					}
+				});
+			}
+			
+		</script>
+	';
+	return $output;
+}
+
+function screen_confirm_account() {
+	if($_POST['user_dob']) {
+		$_POST['user_birthdate'] = strtotime($_POST['user_dob']);
+	}
+	$data = nytech_register_user();
+	
+	global $user;		
+	if($user->uid > 0) {
+		$user = user_load($user->uid);
+		$destination = 'user';
+		$message = 'Welcome, ' . $user->user_full_name['und'][0]['value'] . '!';
+		drupal_set_message($message);
+		drupal_goto($destination);
+		//$output = 'Hello, ' . $user->user_full_name['und'][0]['value'];
+	} else {
+		$output = '
+			<div class="row">
+				<div class="col-sm-6 col-sm-offset-3">
+					<div class="card">
+						<h2>' . $data['message'] . '</h2>
+						<a class="btn btn-default btn-block" href="' . base_path() . 'register">Try Again</a>
+					</div>
+				</div>
+			</div>
+		';
+	}
+	
+	//drupal_set_message($data['message']);
+	return $output;
+}
+
+function nytech_register_user() {
+ 	$output = array(
+		'message' => 'Please enter both email and password.',
+	);
+    if(!empty($_POST['email']) and !empty($_POST['password'])) {
+        require './includes/password.inc';
+            
+        $username = $_POST['email'];
+        $pass = $_POST['password'];
+		
+        if(!empty($_POST['user_birthdate'])) {
+        	$age = $_POST['user_birthdate'];
+        }
+
+		if(!empty($_POST['user_full_name'])) {
+        	$full_name = $_POST['user_full_name'];
+        }
+		
+		if(!empty($_POST['user_phone'])) {
+        	$phone = $_POST['user_phone'];
+        }
+		
+		if(!empty($_POST['registration_id'])) {
+        	$registration_id = $_POST['registration_id'];
+        }
+		
+		if(!empty($_POST['user_lock_code'])) {
+			$user_lock_code = $_POST['user_lock_code'];
+		}
+		if(!empty($_POST['pp'])) {
+			$pp = $_POST['pp'];
+		} else {
+			
+		}
+        
+        $user_by_email = user_load_by_mail($username);
+        
+        if(!empty($user_by_email)) {
+           $output = array(
+           		'status' => 401,
+                'message' => 'That email is already in use.'
+           );
+        } else {
+            $new_user = array(
+                'name' => $username,
+                'pass' => $pass, // note: do not md5 the password
+                'mail' => $username,
+                'status' => 1,
+                'init' => $username,
+                'user_notifications' => array(
+					'und' => array(
+						0 => array(
+							'value' => 0,
+						),
+					),
+				),
+				'user_birthdate' => array(
+					'und' => array(
+						0 => array(
+							'value' => $age,
+						),
+					),
+				),
+				'user_phone' => array(
+					'und' => array(
+						0 => array(
+							'value' => $phone,
+						),
+					),
+				),
+				// 'registration_id' => array(
+					// 'und' => array(
+						// 0 => array(
+							// 'value' => $registration_id,
+						// ),
+					// ),
+				// ),
+				'user_full_name' => array(
+					'und' => array(
+						0 => array(
+							'value' => ucwords($full_name),
+						),
+					),
+				),
+				'user_lock_code' => array(
+					'und' => array(
+						0 => array(
+							'value' => $user_lock_code,
+						),
+					),
+				),
+				'field_primary_provider' => array(
+					'und' => array(
+						0 => array(
+							'target_id' => $pp,
+						),
+					),
+				),
+                'roles' => array(
+                    DRUPAL_AUTHENTICATED_RID => 'authenticated user',
+                    //3 => 'custom role',
+                ),
+            );
+			
+            
+            // The first parameter is sent blank so a new user is created.
+            $user = user_save('', $new_user);
+			$auth_array = array(
+				$username,
+				$pass,
+			);
+			
+			$auth = nytech_auth_user($auth_array);
+            
+            $output = array(
+            	'status' => 200,
+            	'uid' => $auth['uid'],
+            	'sid' => $auth['sid'],
+            	'message' => $auth['message'],
+				'data' => get_nytech_user($auth['uid']),
+			); 
+        }
+    } else {
+        $output = array(
+            'message' => 'Email name and password are required.'
+        );
+    }
+    
+    return $output;
+}
+
+function screen_provider_search() {
+	
+
+	if(!empty($_GET['query'])) {
+		$query = (string) $_GET['query'];
+		$result = api_search_providers($query);
+	} else {
+		$query = '';
+		$result = 'Search for your Primary Provider.';
+	}
+	
+	$form = '
+		<form action="' . base_path() . current_path() . '" method="get" class="form-inline" >
+			<input class="form-control" type="text" value="' . $query . '" required="" placeholder="Provider name..." name="query" />
+			<input class="btn btn-success" type="submit" value="Search" />
+		</form>
+		<br /><br />
+	';
+	
+	$header = '<h1>Find Your Provider</h1><br /><br />';
+	
+	return $header . $form . $result;
+}
+
+function api_search_providers($string) {
+	
+	$output = '';
+	
+	$query = new EntityFieldQuery();
+	$query->entityCondition('entity_type', 'node')
+	  ->entityCondition('bundle', 'primary_caretaker')
+	  ->propertyCondition('status', NODE_PUBLISHED)
+	  ->fieldCondition('field_primary_name', 'value', $string, 'CONTAINS')
+	  // See the comment about != NULL above.
+	
+	  ->range(0, 10)
+	  // Run the query as user 1.
+	  ->addMetaData('account', user_load(1));
+	
+	$result = $query->execute();
+	if (isset($result['node'])) {
+		$ids = array_keys($result['node']);
+		$objects = entity_load('node', $ids);
+		foreach ($objects as $key => $object) {
+			$pp = node_load($object->nid);
+			$pp = node_view($pp);
+			$pp = drupal_render($pp);
+			$output .= $pp;
+		}
+	} else {
+		$output = '<div class="col-12">No results for "' . $string . '"</div>';
+	}
+	
+	return '<div class="row">' . $output . '</div>';
+}
+
+function screen_provider_plans($org_id) {
+	$org = node_load($org_id);
+	$org = node_view($org, 'default');
+	$org = drupal_render($org);
+	return $org;
+}
+
+function screen_provider_plans_next($org_id) {
+	$org = node_load($org_id);
+	$org = node_view($org, 'default');
+	$org = drupal_render($org);
+	return $org;
+}
+
+function screen_provider_providers($org_id) {
+	$org = node_load($org_id);
+	$org = node_view($org, 'default');
+	$org = drupal_render($org);
+	return $org;
+}
+
+function get_pp() {
+	if(!empty($_GET['pp'])) {
+		$pp = array(
+			'pp' => (int) $_GET['pp'],
+		);
+	} else {
+		$pp = 0;
+	}
+	return $pp;
+}
+
+function get_plan_and_pp() {
+	$data = array();
+	if(!empty($_GET['pp'])) {
+		$data['pp'] = (int) $_GET['pp'];
+	}
+	if(!empty($_GET['plan'])) {
+		$data['plan'] = (int) $_GET['plan'];
+	}
+	if(!empty($_GET['children'])) {
+		$data['children'] = (int) $_GET['children'];
+	}
+	
+	return $data;
+}
+
+function get_plans_for_org($org_id) {
+	$output = '';
+	if(!empty($_GET['coupon'])) {
+		$query = new EntityFieldQuery();
+		$query->entityCondition('entity_type', 'node')
+		  ->entityCondition('bundle', 'plan')
+		  ->fieldCondition('field_related_org', 'target_id', $org_id, '=')
+		  ->fieldCondition('field_stripe_id', 'value', $_GET['coupon'], '=')
+		  		  
+		  ->fieldOrderBy('field_plan_sort_order', 'value', 'ASC')
+		  ->addMetaData('account', user_load(1));
+		
+		$result = $query->execute();
+	} else {
+		$query = new EntityFieldQuery();
+		$query->entityCondition('entity_type', 'node')
+		  ->entityCondition('bundle', 'plan')
+		  ->propertyCondition('status', NODE_PUBLISHED)
+		  ->fieldCondition('field_related_org', 'target_id', $org_id, '=')
+		  
+		  ->fieldOrderBy('field_plan_sort_order', 'value', 'ASC')
+		  ->addMetaData('account', user_load(1));
+		
+		$result = $query->execute();
+	}
+	if (isset($result['node'])) {
+	  $ids = array_keys($result['node']);
+	  $plans = entity_load('node', $ids);
+	} 
+	foreach ($plans as $key => $plan) {
+		$plan = node_view($plan);
+		$output .= drupal_render($plan);
+		
+	}
+	
+	return $output;
+}
+
+function get_coupon($path) {
+	$output = '';
+	if(!empty($_GET['coupon'])) {
+		
+		$reset_coupon = l('Clear Coupon', $path, array(
+			'query' => get_plan_and_pp(), 
+			'attributes' => array(
+				'class' => array(
+					'btn', 
+					'btn-block', 
+					'btn-info'
+				)
+			)
+		));
+		
+		$query = new EntityFieldQuery();
+		$query->entityCondition('entity_type', 'node')
+		  ->entityCondition('bundle', 'plan')
+		  ->fieldCondition('field_stripe_id', 'value', $_GET['coupon'], '=')
+		  		  
+		  ->addMetaData('account', user_load(1));
+		
+		$result = $query->execute();
+		
+		if (isset($result['node'])) {
+		  $ids = array_keys($result['node']);
+		  $plans = entity_load('node', $ids);
+		  
+		  foreach ($plans as $key => $plan) {
+				$plan = node_view($plan);
+				$output .= drupal_render($plan);
+				$output .= '<div class="col-4"><div class="card">' . $reset_coupon . '</div>';
+				
+			}
+		}  else {
+			$output = '
+				<div class="card">
+					<h2>"' . $_GET['coupon'] . '" is not a valid coupon.</h2>
+					' . $reset_coupon . '
+				</div>
+			';
+		}
+		return $output;
+		
+	} 
+}
+
+function screen_provider_register($org_id) {
+	$org = node_load($org_id);
+	$org = node_view($org, 'default');
+	$org = drupal_render($org);
+	return $org;
+}
+
+function provider_onboarding_status() {
+	$root = arg(0);
+	$arg1 = arg(1);
+	$arg2 = arg(2);
+	
+	$providesr = '
+		<div class="alert alert-light">
+			<span class="small-text">Step 1</span><br />
+			Provider
+		</div>
+	';
+	$plans = '
+		<div class="alert alert-light">
+			<span class="small-text">Step 2</span><br />
+			Plan
+		</div>
+	';
+	$info = '
+		<div class="alert alert-light">
+			<span class="small-text">Step 3</span><br />
+			Account
+		</div>
+	';
+	$payment = '
+		<div class="alert alert-light">
+			<span class="small-text">Step 4</span><br />
+			Payment
+		</div>
+	';
+	
+	if($root == 'providers' && is_numeric($arg1) && $arg2 == 'providers') {
+		$providers = '
+			<div class="alert alert-primary">
+				<span class="small-text">Step 1</span><br />
+				<i class="fa fa-user-md"></i>  Provider
+			</div>
+		';
+	}
+	if($root == 'providers' && is_numeric($arg1) && $arg2 == 'plans') {
+		$providers = '
+			<div class="alert alert-success">
+				<span class="small-text">Step 1</span><br />
+				<i class="fa fa-check"></i> Provider
+			</div>
+		';
+		$plans = '
+			<div class="alert alert-primary">
+				<span class="small-text">Step 2</span><br />
+				<i class="fa fa-medkit"></i>  Plan
+			</div>
+		';
+	}
+	if($root == 'providers' && is_numeric($arg1) && $arg2 == 'register') {
+		$providers = '
+			<div class="alert alert-success">
+				<span class="small-text">Step 1</span><br />
+				<i class="fa fa-check"></i> Provider
+			</div>
+		';
+		$plans = '
+			<div class="alert alert-success">
+				<span class="small-text">Step 2</span><br />
+				<i class="fa fa-check"></i> Plans
+			</div>
+		';
+		$info = '
+			<div class="alert alert-primary">
+				<span class="small-text">Step 3</span><br />
+				<i class="fa fa-user"></i> Account
+			</div>
+		';
+	}
+	
+	if($root == 'providers' && is_numeric($arg1) && $arg2 == 'payment') {
+		$providers = '
+			<div class="alert alert-success">
+				<span class="small-text">Step 1</span><br />
+				<i class="fa fa-check"></i> Provider
+			</div>
+		';
+		$plans = '
+			<div class="alert alert-success">
+				<span class="small-text">Step 2</span><br />
+				<i class="fa fa-check"></i> Plans
+			</div>
+		';
+		$info = '
+			<div class="alert alert-success">
+				<span class="small-text">Step 3</span><br />
+				<i class="fa fa-check"></i> Account
+			</div>
+		';
+		
+		$payment = '
+			<div class="alert alert-primary">
+				<span class="small-text">Step 4</span><br />
+				<i class="fa fa-credit-card-alt "></i> Payment
+			</div>
+		';
+	}
+	
+	$output = '
+		<div class="row no-gutters">
+			<div class="col">' . $providers . '</div>
+			<div class="col">' . $plans . '</div>
+			<div class="col">' . $info . '</div>
+			<div class="col">' . $payment . '</div>
+		</div>
+	';
+	
+	return $output;
+}
+
+function screen_provider_payment($org_id) {
+	$org = node_load($org_id);
+	$org = node_view($org, 'default');
+	$org = drupal_render($org);
+	return $org;
+}
+
+function screen_verification_account() {
+	$output = 'PING successful';
+	if(!empty($_POST['email'])) {
+		$user = user_load_by_mail($_POST['email']);
+		if(!empty($user->mail)) {
+			$output = array(
+				'code' => 401,
+				'message' => $user->mail . ' is already in use.',
+				'html' => '<span class="badge badge-danger">' . $user->mail . '" is already in use.</span>',
+				'email' => $user->mail
+			);
+			// $output = '<span class="badge badge-danger">' . $user->mail . '" is already in use.</span>';
+		} else {
+			$output = array(
+				'code' => 200,
+				'message' => 'Available!',
+				'html' => $user->mail . '<span class="badge badge-success"><i class="fa fa-check"></i></span>',
+				'email' => $user->mail
+			);
+			// $output = $user->mail . '<span class="badge badge-success"><i class="fa fa-check"></i></span>';
+		}
+	}
+	return $output;
+}
+
+function screen_verification_register() {
+	$auth = NULL;
+	$variables = $_POST;
+	$variables['roles'] = 6;
+	$output = new RegisterUser($auth, $variables);
+	return $output;
+}
+
+function screen_user_subscriptions_single($stripe_plan_id) {
+	
+	global $user;
+	$user = user_load($user->uid);
+	$user_id = $user->uid;
+	
+	$data = new Subscription($stripe_plan_id, $user, $org_id);
+	$output = StripeSub::render($data);
+	return $output;
+}
+
+function my_subscription($user) {
+	
+	$stripeKey = new StripeKey;
+	
+	if(!empty($user->stripe_subscription_id)) {
+		$sub_id = $user->stripe_subscription_id['und'][0]['value'];
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+
+		$sub_data = \Stripe\Subscription::retrieve($sub_id);
+
+		$output = '
+			<h5>' . $sub_data->plan->name . '</h5>
+			Current Period Ends: ' . date('M d, Y', $sub_data->current_period_end) . '<br />
+			Status: '. $sub_data->status . '<br />
+		';
+	} else {
+		$output = 'No Subscriptions at this time.';
+	}
+	
+	return $output;
+}
+
+function screen_user_subscriptions_add($sub_eid) {
+	global $user;
+	$user = user_load($user->uid);
+	$user_id = $user->uid;
+	
+	$sub_object = entity_load_single('subscription', $sub_eid);
+	$sub_class = new Subscription($sub_object);
+	if($sub_class->user_id == $user_id) {
+		$output = '
+			<div class="card">
+				<h3>Adding A Sub Accont</h3>
+				You can add subscriptions for members of your family.<br />
+			</div>
+			' . get_sub_addon_info($sub_class) . '
+		';
+		return $output;
+	} else {
+		drupal_set_message('Error: Please try again.');
+		drupal_goto('user');
+	}
+}
+
+function get_sub_addon_info($sub) {
+	$org = node_load($sub->org_id);
+	$plus_one_id = $org->field_plus_one['und'][0]['target_id'];
+	$plus_more_id = $org->field_plus_more['und'][0]['target_id'];
+	$plus_one_object = node_load($plus_one_id);
+	$plus_more_object = node_load($plus_more_id);
+	
+	
+	
+	$count = count($sub->dependents);
+	if($count == 0) {
+		$add_sub = '
+			<h5>Add A Second User for only $15/mo</h5>
+			<br /><br />
+			' . l('Add User', 'api/v1/subscribe_sub_user/' . $plus_one_id . '/' . $sub->id, array('attributes' => array('class' => array('btn', 'btn-sm', 'btn-success')))) . '
+		';
+	} elseif($count > 0) {
+		$add_sub = '
+			<h5>Add a another user for only $10/mo</h5>
+			' . l('Add User', 'api/v1/subscribe_sub_user/' . $plus_more_id . '/' . $sub->id, array('attributes' => array('class' => array('btn', 'btn-sm', 'btn-success')))) . '
+		';
+	}
+	
+	$add_sub = '
+		<div class="card">
+			' . $add_sub . '
+		</div>
+	';
+	
+	$output = $add_sub;
+
+	return $output;
+}
+
+function get_sub_sub_form($sub) {
+	$output = screen_registration(TRUE);
+	return $output;
+}
+
+function api_subscribe_sub_user($plan_id, $sub_id) {
+	
+	$stripeKey = new StripeKey;
+	
+	// load the parent sub
+	$parent_sub_object = entity_load_single('subscription', $sub_id);
+	$parent_sub = new Subscription($parent_sub_object);
+	
+	require_once('stripe/init.php');
+	
+	// Load the plan and get the stripe_plan_id;
+	$plan_object = node_load($plan_id);
+	$stripe_plan_id = $plan_object->field_stripe_id['und'][0]['value'];
+	
+	// Charge the card
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+	
+	$new_sub = \Stripe\Subscription::create(array(
+		"customer" => $parent_sub->cus_id,
+		"items" => array(
+			array(
+				"plan" => $stripe_plan_id,
+			),
+		)
+	));
+	
+	// gen drupal sub
+	$drupal_sub = SubscriptionOperations::create($new_sub, $parent_sub->org_id, 0, $parent_sub->pp, $plan_id);
+	
+	// save the new subscription to the parent subscription.
+	$parent_sub_object->sub_dependents['und'][]['value'] = $drupal_sub->id;
+	entity_save('subscription', $parent_sub_object);
+	$parent_sub_object = entity_load_single('subscription', $sub_id);
+	
+	
+	
+	
+	drupal_goto('user/subscriptions');
+}
+
+class StripeKey {
+	
+	public $trigger;
+	public $host;
+	public $pk;
+	public $sk;
+	public $alert;
+	
+	function __construct($server = NULL) {
+		
+		global $user;
+		$user = user_load($user->uid);
+		
+		if(empty($server)) {
+			$server = $_SERVER;
+		}
+		
+		$this->set_trigger($server);
+		$trigger = $this->trigger;
+		$this->set_host($server);
+		$this->set_pk($trigger);
+		$this->set_sk($trigger);
+		
+		
+		if(in_array('administrator', $user->roles)) {
+			$this->set_alert($trigger);
+		}
+		
+		
+	}
+	
+	function set_trigger($server) {
+			
+		$host = $server['HTTP_HOST'];
+		
+		switch ($host) {
+			case 'app.mywebappnamehere.com':
+				$this->trigger = 'LIVE';
+				break;
+			
+			default:
+				$this->trigger = 'TEST';
+				break;
+		}
+	}
+	
+	function set_host($server) {
+		$host = $server['HTTP_HOST'];
+		$this->host = $host;
+	}
+	
+	function set_pk($trigger) {
+		switch ($trigger) {
+			case 'LIVE':
+				$this->pk = LIVEPK;
+				break;
+			
+			default:
+				$this->pk = TESTPK;
+				break;
+		}
+	}
+	
+	function set_sk($trigger) {
+		switch ($trigger) {
+			case 'LIVE':
+				$this->sk = LIVESK;
+				break;
+			
+			default:
+				$this->sk = TESTSK;
+				break;
+		}
+	}
+	
+	function set_alert($trigger) {
+		if($trigger == 'LIVE') {
+			$class = 'danger';
+		} else {
+			$class = 'success';
+		}
+		
+		$output = '
+			<div id="enviro-indicator">
+				<div class="alert alert-' . $class . '" >
+					Stripe in: <strong>' . $this->trigger . '</strong><br />
+					HOST: <strong>' . $this->host . '</strong>
+				</div>
+			</div>
+		';
+		$this->alert = $output;
+		
+	}
+	
+	
+}
+
+function render_drupal_plan() {
+	if(!empty($_GET['plan'])) {
+		$plan = node_load($_GET['plan']);
+		$plan = node_view($plan, 'teaser');
+		$output = drupal_render($plan);
+	} else {
+		$output = 'No Plan is selected. Please start over.';
+	}
+	return $output;
+}
+
+function get_plan_object() {
+	if(!empty($_GET['plan'])) {
+		$plan = node_load($_GET['plan']);
+	} else {
+		$plan = NULL;
+	}
+	return $plan;
+}
+
+
+class DefaultCard {
+	public $brand;
+	public $last_4;
+	public $card_id;
+	public $html;
+	public $error;
+	public $update;
+	
+	function __construct($user) {
+		
+		if(!empty($user->stripe_default_card_id) && !empty($user->stripe_customer_id)) {
+			$stripeKey = new StripeKey;
+			\Stripe\Stripe::setApiKey($stripeKey->sk);
+			
+			$customer_id = $user->stripe_customer_id['und'][0]['value'];
+			$card_id = $user->stripe_default_card_id['und'][0]['value'];
+			
+			try {
+			    $customer = \Stripe\Customer::retrieve($customer_id);
+				$card = $customer->sources->retrieve($card_id);
+				$brand = $card->brand;
+				$last_4 = $card->last4;
+				$card_id = $card->id;
+				
+				$this->set_brand($brand);
+				$this->set_last_4($last_4);
+				$this->set_card_id($card_id);
+				$this->set_html($brand, $last_4);
+				$this->set_update('Update Payment Card <i class="fad fa-credit-card"></i>');
+			} catch (\Stripe\Error\Base $e) {
+			  // Code to do something with the $e exception object when an error occurs
+			  $this->set_error($e->getMessage());
+			} catch (Exception $e) {
+			  // Catch any other non-Stripe exceptions
+			  $this->set_error($e->getMessage());
+			  $this->set_html($e->getMessage());
+			  $this->set_update('Update Payment Card <i class="fad fa-credit-card"></i>');
+			}
+			
+		}  else {
+			$this->set_html();
+			$this->set_last_4('No payment card on file');
+			$this->set_update('Add A Payment Card <i class="fa fa-plus-circle"></i>');
+		}
+	}
+	
+	static function delete($customer_id, $card_id) {
+		$stripeKey = new StripeKey;
+		\Stripe\Stripe::setApiKey($stripeKey->sk);
+		
+		$customer = \Stripe\Customer::retrieve($customer_id);
+		$customer->sources->retrieve($card_id)->delete();
+	}
+	
+	static function update($user, $card_id) {
+		// stuff
+	}
+	
+	function set_brand($var) {
+		$this->brand = $var;
+	}
+	
+	function set_last_4($var) {
+		$this->last_4 = 'ending in ' . $var;
+	}
+	
+	function set_card_id($var) {
+		$this->card_id = $var;
+	}
+	
+	function set_html($brand = null, $last_4 = null) {
+		if(!empty($brand) && !empty($last_4)) {
+			$output = '
+				<div id="current-card-html" class="alert alert-success d-inline-block">
+				  <h6 class="alert-heading text-left">Current Card</h6>
+				  <p class="text-left">
+				    ' . $brand . ' - ending in ' . $last_4 . '
+				  </p>
+				</div>
+			';
+		} else {
+			$output = '';
+		}
+		$this->html = $output;
+	}
+	
+	function set_error($var) {
+		$this->error = $var;
+	}
+	
+	function set_update($var) {
+		$this->update = $var;
+	}
+}
+
+function api_create_a_card() {
+	global $user;
+	$user = user_load($user->uid);
+	if(!empty($_POST['stripeToken'])) {
+		$token = $_POST['stripeToken'];
+		if(!empty($user->stripe_customer_id)) {
+			$responce = generate_a_new_payment_card($user);
+			
+		} else {
+			$responce = api_card_and_customer_create($user);
+		}
+		
+		if(!empty($responce['errors'])) {
+			$errors = $responce['errors'];
+			$json = $errors->httpBody;
+			$errors = json_decode($json);
+	
+	
+			$message = $errors->error->message;
+			
+			$destination = 'user/card/reset';
+			$query = array('message' => $message);
+			drupal_goto($destination, array('query' => $query));
+		} else {
+			delete_all_cards_but_default_source($user);
+			$edit = array(
+				'all_subs_current' => null,
+			);
+			user_save($user, $edit);
+			
+			mail_card_updated($user);
+			mail_card_updated_user($user);
+		}
+		
+		
+	}
+
+	
+	
+	$destination = 'user';
+	drupal_goto($destination);
+}
+
+
+class ClientSignUp {
+	
+	public $step;
+	
+	function __construct() {
+		$root = arg(0);
+		$org = arg(1);
+		$section = arg(2);
+		$extention = arg(3);
+		
+		if($root == 'providers' && is_numeric($org) && $section == 'providers' && empty($extention)) {
+			$new_step = 'providers';
+		} elseif($root == 'providers' && is_numeric($org) && $section == 'plans' && empty($extention)) {
+			$new_step = 'plan';
+		} elseif($root == 'providers' && is_numeric($org) && $section == 'plans' && $extention == 'next') {
+			$new_step = 'plan_next';
+		} elseif($root == 'providers' && is_numeric($org) && $section == 'register' && empty($extention)) {
+			$new_step = 'register';
+		} elseif($root == 'providers' && is_numeric($org) && $section == 'register' && $extention == 'next') {			
+			$new_step = 'register_next';
+		} elseif($root == 'providers' && is_numeric($org) && $section == 'payment' && empty($extention)) {			
+			$new_step = 'payment';
+		} else {
+			$new_step = 'exit';
+		}
+		
+		$this->set_step($new_step);
+		
+	}
+	
+	function set_step($new_step) {
+		$this->step = $new_step;
+	}
+	
+	static function step() {
+		$step = new ClientSignUp;
+		$output = $step->step;
+		return $output;
+	}
+}
+
+function get_stripe_subscription_data($stripe_subscription_id) {
+	$stripeKey = new StripeKey;
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+
+	$data = \Stripe\Subscription::retrieve($stripe_subscription_id);
+	
+	return $data;
+}
+
+function sync_sub_to_stripe($sub, $data) {
+	$array = array(
+		'subscription_id' => $entity->id,
+		'op' => $op,
+		'type' => $entity->type,
+		'stripe_sub_id' => $entity->sub_id,
+		'stripe_cus_id' => $entity->cus_id,
+		'canceled_at' => $entity->canceled_at,
+		'created' => $entity->created,
+		'user_id' => $entity->user_id,
+		'org_id' => $entity->org_id,
+		'pp' => $entity->pp,
+		'current_period_start' => $entity->current_period_start,
+		'current_period_ends' => $entity->current_period_end,
+		'days_until_due' => $entity->days_until_due,
+		'ended_at' => $entity->ended_at,
+		'plan_id' => $entity->plan_id,
+		'price' => $entity->price,
+		'plan_interval' => $entity->plan_interval,
+		'interval_count' => $entity->interval_count,
+		'stripe_status' => $entity->stripe_status,
+		'trial_start' => $entity->trial_start,
+		'trial_end' => $entity->trial_end,
+		'sub_status' => $entity->sub_status,
+		'dependents' => $depend,
+	);
+	$sub->sub_id = $data->id;
+	
+	
+	
+	entity_save('subscription', $sub);
+}
+
+function api_list_payouts() {
+	$stripeKey = new StripeKey;
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+	require_once('stripe/init.php');
+	$payouts = \Stripe\Payout::all(array("limit" => 1000));	
+	
+	
+	
+	$list = array();
+	$number_of_payouts = 0;
+	$amount_list = array();
+	$sum_of_all_payouts = 0;
+	
+	
+	foreach ($payouts->data as $key => $payout) {
+		
+		$amount_list[] = $payout['amount'];
+		
+		$amount = $payout['amount'];
+		$amount = $amount * 0.01;
+		
+		$list[] = array(
+			'date' => date('m/d/Y', $payout['created']),
+			'amount' => '$' . number_format($amount, 2, '.', ','),
+		);
+	}
+	
+	$count = count($list);
+	
+	$sum = array_sum($amount_list);
+	$sum = $sum * 0.01;
+	$sum = '$' . number_format($sum, 0, '.', ',');
+	
+	$avg = array_sum($amount_list) / $count;
+	$avg = $avg * 0.01;
+	$avg = '$' . number_format($avg, 0, '.', ',');
+	
+	$output = array(
+		'count' => $count,
+		'total' => $sum,
+		'avg' => $avg,
+		'data' => $list,
+	);
+	
+	
+	return $output;
+}
+
+function api_charges() {
+	$args = array();
+	$args['limit'] = 100;
+	if(!empty($_GET['week'])) {
+		if($_GET['week'] == 'last') {
+			$start_time = strtotime("last monday") - 1;
+			$end_time = strtotime("last sunday midnight");
+			$args['created']['gt'] = (int) $start_time;
+			$args['created']['lt'] = (int) $end_time;
+			
+		} elseif($_GET['week'] == 'true') {
+			$start_time = strtotime("this monday") - 1;
+			$end_time = date('U');
+			$args['created']['gt'] = (int) $start_time;
+			$args['created']['lt'] = (int) $end_time;
+		}
+	}
+	
+	if(!empty($_GET['start']) && !empty($_GET['end'])) {
+		$start_time = strtotime($_GET['start']) - 1;
+		$end_time = strtotime($_GET['end']);
+		$args['created']['gt'] = (int) $start_time;
+		$args['created']['lt'] = (int) $end_time;
+	}
+	
+	
+	$stripeKey = new StripeKey;
+	\Stripe\Stripe::setApiKey($stripeKey->sk);
+	require_once('stripe/init.php');
+	$charges = \Stripe\Charge::all($args);
+	$output = array();
+	$totals = array();
+	$count = 0;
+	
+	foreach ($charges->data as $key => $row) {
+		$totals[] = $row->amount;
+	}
+	
+	if(!empty($totals)) {
+		$count = count($totals);
+		$sum = array_sum($totals);
+		$sum = $sum * 0.01;
+	}
+	
+	$output = array(
+		'count' => $count,
+		'sum' => $sum,
+	);
+	
+	return $output;
+}

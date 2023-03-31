@@ -1,0 +1,5 @@
+name = NyTech Stripe
+description = Work with stripe.
+core = 7.x
+package = NyTech
+files[] = nytech_stripe.module
